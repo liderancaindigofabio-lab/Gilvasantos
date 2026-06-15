@@ -49,7 +49,7 @@
     <div class="sidebar">
         <div class="logo-area"><h2>GILVA SANTOS</h2></div>
         <ul class="nav-links">
-            <li class="active" onclick="showTab('agendamentos', this)">📅 <span>Agenda</span></li>
+            <li id="li-ag" class="active" onclick="showTab('agendamentos', this)">📅 <span>Agenda</span></li>
             <li onclick="showTab('clientes', this)">👤 <span>Clientes</span></li>
             <li onclick="showTab('financeiro', this)">💰 <span>Financeiro</span></li>
             <li onclick="localStorage.removeItem('gilva_auth'); window.location.href='index.html'">🚪 <span>Sair</span></li>
@@ -124,12 +124,12 @@
             ags.forEach(a => {
                 if(a.status === 'Pendente') rec += a.valor;
                 const dataF = new Date(a.data_hora).toLocaleString('pt-BR');
-                const nomeExibicao = a.clientes ? a.clientes.nome : a.cliente_zap;
+                const nomeExibicao = a.clientes ? a.clientes.nome : "Desconhecido";
                 l.innerHTML += `<tr>
                     <td><strong>${nomeExibicao}</strong><br><small>${a.cliente_zap}</small></td>
                     <td>${a.servico}</td>
                     <td>${dataF}</td>
-                    <td>R$ ${a.valor}</td>
+                    <td>R$ ${parseFloat(a.valor).toFixed(2)}</td>
                     <td><span class="status-pill ${a.status==='Pago'?'status-pago':'status-pendente'}">${a.status}</span></td>
                     <td>
                         ${a.status==='Pendente'?`<button class="btn-action" onclick="pagar('${a.id}')">Pagar</button>`:'OK'}
@@ -142,16 +142,18 @@
         }
         
         async function excluirAgendamento(id) {
-            if(!confirm('Tem certeza que deseja excluir este agendamento?')) return;
-            await _supabase.from('agendamentos').delete().eq('id', id);
+            if(!confirm('Deseja excluir este agendamento?')) return;
+            const { error } = await _supabase.from('agendamentos').delete().eq('id', id);
+            if(error) alert('Erro ao excluir: ' + error.message);
             load();
         }
 
         async function excluirCliente(whatsapp) {
-            if(!confirm('Ao excluir o cliente, todos os agendamentos dele também serão apagados. Continuar?')) return;
+            if(!confirm('Excluir este cliente apagará todo o histórico dele. Continuar?')) return;
             await _supabase.from('agendamentos').delete().eq('cliente_zap', whatsapp);
             await _supabase.from('clientes').delete().eq('whatsapp', whatsapp);
             renderClientes();
+            load();
         }
 
         async function pagar(id) {
