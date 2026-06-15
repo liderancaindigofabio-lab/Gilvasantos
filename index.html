@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Gilva Santos Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --rose-gold: #e5b3a3; --black: #1a1a1a; --white: #ffffff; --bg: #fffaf8; }
+        body { font-family: 'Montserrat', sans-serif; background-color: var(--bg); display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .login-card { background: var(--white); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        h1 { font-family: 'Playfair Display', serif; color: var(--black); margin-bottom: 30px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: var(--black); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        button:hover { background: var(--rose-gold); color: var(--black); }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>GILVA SANTOS</h1>
+        <input type="text" id="user" placeholder="Usuário">
+        <input type="password" id="pass" placeholder="Senha">
+        <button onclick="login()">Entrar</button>
+    </div>
+    <script>
+        function login() {
+            const u = document.getElementById('user').value;
+            const p = document.getElementById('pass').value;
+            if (u === 'Gilva' && p === '12345') {
+                localStorage.setItem('gilva_auth', 'true');
+                window.location.href = 'dashboard.html';
+            } else {
+                alert('Usuário ou senha incorretos.');
+            }
+        }
+    </script>
+</body>
+</html>
