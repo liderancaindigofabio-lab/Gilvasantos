@@ -35,14 +35,16 @@
             <div class="service-item" onclick="selectService(this, 'Design com Hena', 45)">Design com Hena - R$ 45,00</div>
             <div class="service-item" onclick="selectService(this, 'Manutenção de Micro', 30)">Manutenção de Micro - R$ 30,00</div>
         </div>
-        <div class="form-group"><label>Selecione a data e horário combinado com Gilva</label><input type="datetime-local" id="data"></div>
-        <button class="btn-confirm" onclick="confirmar()">Solicitar Agendamento</button>
+        <div class="form-group"><label>Data e Horário</label><input type="datetime-local" id="data"></div>
+        <button class="btn-confirm" id="btn-agendar" onclick="confirmar()">Solicitar Agendamento</button>
     </div>
-    <div class="footer">© 2026 Gilva Santos Studio de Beleza.</div>
     <script>
         const SUPABASE_URL = 'https://phfeoylssuvylsfbigui.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_M4l09uV5ekIgyAJVapAozA_oXS75600';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Correção do cliente Supabase
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
         let selectedService = { nome: '', valor: 0 };
         function selectService(el, nome, valor) {
             document.querySelectorAll('.service-item').forEach(i => i.classList.remove('active'));
@@ -50,12 +52,42 @@
             selectedService = { nome, valor };
         }
         async function confirmar() {
-            const nome = document.getElementById('nome').value, zap = document.getElementById('whatsapp').value, data = document.getElementById('data').value;
-            if(!nome || !zap || !data || !selectedService.nome) return alert('Por favor, preencha todos os campos.');
-            await supabaseClient.from('clientes').upsert({ whatsapp: zap, nome: nome }, { onConflict: 'whatsapp' });
-            const { error } = await supabaseClient.from('agendamentos').insert({ cliente_zap: zap, servico: selectedService.nome, valor: selectedService.valor, data_hora: data });
-            if(error) alert('Erro ao agendar. Tente novamente.');
-            else { alert('Olá ' + nome + '! Seu agendamento foi enviado com sucesso.'); location.reload(); }
+            const btn = document.getElementById('btn-agendar');
+            const nome = document.getElementById('nome').value;
+            const zap = document.getElementById('whatsapp').value;
+            const data = document.getElementById('data').value;
+            
+            if(!nome || !zap || !data || !selectedService.nome) {
+                alert('Por favor, preencha todos os campos.');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerText = 'Enviando...';
+            
+            try {
+                // Upsert cliente
+                const { error: errCl } = await _supabase.from('clientes').upsert({ whatsapp: zap, nome: nome }, { onConflict: 'whatsapp' });
+                if (errCl) throw errCl;
+                
+                // Add agendamento
+                const { error: errAg } = await _supabase.from('agendamentos').insert({ 
+                    cliente_zap: zap, 
+                    servico: selectedService.nome, 
+                    valor: selectedService.valor, 
+                    data_hora: data 
+                });
+                if (errAg) throw errAg;
+                
+                alert('Olá ' + nome + '! Seu agendamento foi realizado com sucesso!');
+                location.reload();
+            } catch (e) {
+                console.error(e);
+                alert('Erro ao agendar: ' + (e.message || 'Verifique sua conexão'));
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Solicitar Agendamento';
+            }
         }
     </script>
 </body>
