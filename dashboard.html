@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --rose-gold: #e5b3a3; --rose-dark: #b58373; --black: #1a1a1a; --white: #ffffff; --bg-light: #f9f4f2; --success: #88a070; }
+        :root { --rose-gold: #e5b3a3; --rose-dark: #b58373; --black: #1a1a1a; --white: #ffffff; --bg-light: #f9f4f2; --success: #88a070; --danger: #e57373; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Montserrat', sans-serif; background-color: var(--bg-light); color: var(--black); }
         .sidebar { position: fixed; width: 250px; height: 100vh; background: var(--black); color: var(--white); padding: 30px 20px; z-index: 100; }
@@ -27,7 +27,8 @@
         .status-pill { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
         .status-pago { background: #e8f5e9; color: #2e7d32; }
         .status-pendente { background: #fff3e0; color: #ef6c00; }
-        .btn-action { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.8rem; background: var(--black); color: white; font-weight: 600; }
+        .btn-action { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.8rem; background: var(--black); color: white; font-weight: 600; margin-right: 5px; }
+        .btn-danger { background: var(--danger); }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
         .modal-content { background: white; margin: 5% auto; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; }
         .form-group { margin-bottom: 15px; }
@@ -43,8 +44,6 @@
         if (localStorage.getItem('gilva_auth') !== 'true') window.location.href = 'index.html';
         const SUPABASE_URL = 'https://phfeoylssuvylsfbigui.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_M4l09uV5ekIgyAJVapAozA_oXS75600';
-        
-        // Correção do cliente Supabase
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     </script>
     <div class="sidebar">
@@ -72,7 +71,7 @@
         </div>
         <div id="clientes" class="tab-content">
             <header><h1>Clientes</h1></header>
-            <div class="table-container"><table><thead><tr><th>Nome</th><th>WhatsApp</th><th>Total</th></tr></thead><tbody id="lista-clientes"></tbody></table></div>
+            <div class="table-container"><table><thead><tr><th>Nome</th><th>WhatsApp</th><th>Total Gasto</th><th>Ações</th></tr></thead><tbody id="lista-clientes"></tbody></table></div>
         </div>
         <div id="financeiro" class="tab-content">
             <header><h1>Financeiro</h1></header>
@@ -93,13 +92,10 @@
     <script>
         async function load() {
             try {
-                const { data: ags, error } = await _supabase.from('agendamentos').select('*').order('data_hora', { ascending: true });
+                const { data: ags, error } = await _supabase.from('agendamentos').select('*, clientes(nome)').order('data_hora', { ascending: true });
                 if (error) throw error;
                 renderAgendamentos(ags || []);
-            } catch (e) {
-                console.error(e);
-                alert('Erro ao carregar dados: ' + e.message);
-            }
+            } catch (e) { console.error(e); }
         }
         function showTab(id, el) { 
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -128,12 +124,36 @@
             ags.forEach(a => {
                 if(a.status === 'Pendente') rec += a.valor;
                 const dataF = new Date(a.data_hora).toLocaleString('pt-BR');
-                l.innerHTML += `<tr><td>${a.cliente_zap}</td><td>${a.servico}</td><td>${dataF}</td><td>R$ ${a.valor}</td><td><span class="status-pill ${a.status==='Pago'?'status-pago':'status-pendente'}">${a.status}</span></td><td>${a.status==='Pendente'?`<button class="btn-action" onclick="pagar('${a.id}')">Pagar</button>`:'OK'}</td></tr>`;
+                const nomeExibicao = a.clientes ? a.clientes.nome : a.cliente_zap;
+                l.innerHTML += `<tr>
+                    <td><strong>${nomeExibicao}</strong><br><small>${a.cliente_zap}</small></td>
+                    <td>${a.servico}</td>
+                    <td>${dataF}</td>
+                    <td>R$ ${a.valor}</td>
+                    <td><span class="status-pill ${a.status==='Pago'?'status-pago':'status-pendente'}">${a.status}</span></td>
+                    <td>
+                        ${a.status==='Pendente'?`<button class="btn-action" onclick="pagar('${a.id}')">Pagar</button>`:'OK'}
+                        <button class="btn-action btn-danger" onclick="excluirAgendamento('${a.id}')">Excluir</button>
+                    </td>
+                </tr>`;
             });
             document.getElementById('stat-count').innerText = ags.length;
             document.getElementById('stat-receber').innerText = `R$ ${rec.toFixed(2)}`;
         }
         
+        async function excluirAgendamento(id) {
+            if(!confirm('Tem certeza que deseja excluir este agendamento?')) return;
+            await _supabase.from('agendamentos').delete().eq('id', id);
+            load();
+        }
+
+        async function excluirCliente(whatsapp) {
+            if(!confirm('Ao excluir o cliente, todos os agendamentos dele também serão apagados. Continuar?')) return;
+            await _supabase.from('agendamentos').delete().eq('cliente_zap', whatsapp);
+            await _supabase.from('clientes').delete().eq('whatsapp', whatsapp);
+            renderClientes();
+        }
+
         async function pagar(id) {
             const { data: ag } = await _supabase.from('agendamentos').select('*').eq('id', id).single();
             await _supabase.from('agendamentos').update({ status: 'Pago' }).eq('id', id);
@@ -145,13 +165,22 @@
         async function renderClientes() {
             const { data: cls } = await _supabase.from('clientes').select('*');
             const l = document.getElementById('lista-clientes'); l.innerHTML = '';
-            cls.forEach(c => l.innerHTML += `<tr><td>${c.nome || 'Sem nome'}</td><td>${c.whatsapp}</td><td>R$ ${parseFloat(c.total_gasto || 0).toFixed(2)}</td></tr>`);
+            cls.forEach(c => l.innerHTML += `<tr>
+                <td>${c.nome || 'Sem nome'}</td>
+                <td>${c.whatsapp}</td>
+                <td>R$ ${parseFloat(c.total_gasto || 0).toFixed(2)}</td>
+                <td><button class="btn-action btn-danger" onclick="excluirCliente('${c.whatsapp}')">Excluir</button></td>
+            </tr>`);
         }
         
         async function renderFinanceiro() {
-            const { data: ags } = await _supabase.from('agendamentos').select('*').eq('status', 'Pago');
+            const { data: ags } = await _supabase.from('agendamentos').select('*, clientes(nome)').eq('status', 'Pago');
             const l = document.getElementById('lista-financeiro'); l.innerHTML = ''; let t = 0;
-            ags.forEach(p => { t += parseFloat(p.valor); l.innerHTML += `<tr><td>${new Date(p.data_hora).toLocaleDateString('pt-BR')}</td><td>${p.cliente_zap}</td><td>R$ ${parseFloat(p.valor).toFixed(2)}</td></tr>`; });
+            ags.forEach(p => { 
+                t += parseFloat(p.valor); 
+                const nomeExibicao = p.clientes ? p.clientes.nome : p.cliente_zap;
+                l.innerHTML += `<tr><td>${new Date(p.data_hora).toLocaleDateString('pt-BR')}</td><td>${nomeExibicao}</td><td>R$ ${parseFloat(p.valor).toFixed(2)}</td></tr>`; 
+            });
             document.getElementById('total-recebido').innerText = `R$ ${t.toFixed(2)}`;
         }
         load();
